@@ -4,7 +4,7 @@ http.createServer((req, res) => res.end('Minecraft AFK Bot is Online')).listen(p
 
 const mineflayer = require('mineflayer');
 
-// 🌐 Your Discord Webhook URL is embedded safely below
+// 🌐 Your active Discord Webhook URL is embedded below
 const DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/1543944197067898943/ATiUVFN3Qq-PN0RQwyHrl_n40d7eIOBoMtxn_EX_Ijgv_rE95ZDHSwmpzoluX2_WbDQV";
 
 function sendDiscordAlert(message) {
@@ -28,6 +28,44 @@ function sendDiscordAlert(message) {
 }
 
 let bot;
+let startTime = Date.now(); // ⏱ Tracks the exact millisecond the bot script turned on
+
+function getFormattedSessionTime() {
+  const diff = Date.now() - startTime;
+  const hours = Math.floor(diff / (1000 * 60 * 60));
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+  
+  if (hours === 0) return `${minutes} minute(s)`;
+  return `${hours} hour(s) and ${minutes} minute(s)`;
+}
+
+function getAccountLifetimePlaytime() {
+  if (!bot || !bot.entity) return "Loading...";
+  
+  try {
+    // Reads engine-level statistics directly from the server core (tracked in game ticks)
+    const totalTicks = bot.getStatistic('play_time') || bot.getStatistic('time_since_death') || 0;
+    
+    // Converts game ticks into real-world hours and minutes (20 ticks = 1 second)
+    const totalSeconds = totalTicks / 20;
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    
+    return `${hours} hour(s) and ${minutes} minute(s)`;
+  } catch (err) {
+    return "Synchronizing statistics...";
+  }
+}
+
+// ⏰ Automatically triggers every 1 hour (3600000 milliseconds)
+setInterval(() => {
+  if (bot && bot.username) {
+    const sessionTime = getFormattedSessionTime();
+    const lifetimeTime = getAccountLifetimePlaytime();
+    
+    sendDiscordAlert(`⏱️ **Hourly Status Update:**\n• **Current Session Uptime:** ${sessionTime}\n• **Total Account Playtime:** ${lifetimeTime}\n\n*The bot is still online and tracking shards on DonutSMP!*`);
+  }
+}, 3600000);
 
 function createBot() {
   bot = mineflayer.createBot({
@@ -100,12 +138,20 @@ function createBot() {
     }, 3000);
   }
 
+  // 🚀 Forces transition out of proxy entry lobby instantly to stop 30-second timeout drop errors
   bot.once('spawn', () => {
     setTimeout(() => {
-      bot.chat('AFK bot online!');
-      sendDiscordAlert("Bot successfully connected and spawned into the lobby!");
-      randomMovement();
-    }, 1000);
+      console.log('Bot logged in! Moving past entry proxy node...');
+      
+      // Types command to jump from the entry proxy to the active survival server
+      bot.chat('/play survival'); 
+      
+      setTimeout(() => {
+        bot.chat('AFK bot online!');
+        sendDiscordAlert("Bot successfully connected and transferred to the survival world node!");
+        randomMovement();
+      }, 2000); // Wait 2 seconds for the server swap to complete before cycling movements
+    }, 1500);
   });
 
   bot.on('end', () => {
