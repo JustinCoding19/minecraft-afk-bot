@@ -1,8 +1,31 @@
 const http = require('http');
-// ✅ Fixes Render's port binding loop by creating a basic web listener
+// ✅ Fixes Port Binding Loops by creating a basic web listener
 http.createServer((req, res) => res.end('Minecraft AFK Bot is Online')).listen(process.env.PORT || 10000);
 
 const mineflayer = require('mineflayer');
+
+// 🌐 Your Discord Webhook URL is embedded safely below
+const DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/1543944197067898943/ATiUVFN3Qq-PN0RQwyHrl_n40d7eIOBoMtxn_EX_Ijgv_rE95ZDHSwmpzoluX2_WbDQV";
+
+function sendDiscordAlert(message) {
+  const data = JSON.stringify({ content: `⚠️ **DonutSMP Alert:** ${message}` });
+
+  const url = new URL(DISCORD_WEBHOOK_URL);
+  const options = {
+    hostname: url.hostname,
+    path: url.pathname + url.search,
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Content-Length': Buffer.byteLength(data)
+    }
+  };
+
+  const req = require('https').request(options);
+  req.on('error', (e) => console.error('Webhook error:', e));
+  req.write(data);
+  req.end();
+}
 
 let bot;
 
@@ -12,7 +35,7 @@ function createBot() {
     port: 25565, 
     username: 'justintayjunxi19@outlook.com', 
     auth: 'microsoft', 
-    version: false // ✅ Fixes packet overflow crash by auto-detecting the server version
+    version: false // ✅ Fixes packet overflow crash by auto-detecting server version
   });
 
   bot.on('message', (message) => {
@@ -80,21 +103,25 @@ function createBot() {
   bot.once('spawn', () => {
     setTimeout(() => {
       bot.chat('AFK bot online!');
+      sendDiscordAlert("Bot successfully connected and spawned into the lobby!");
       randomMovement();
     }, 1000);
   });
 
   bot.on('end', () => {
     console.log('Bot disconnected. Reconnecting in 5 seconds...');
+    sendDiscordAlert("Bot disconnected from DonutSMP. Attempting to reconnect in 5 seconds...");
     setTimeout(createBot, 5000);
   });
 
   bot.on('error', err => {
     console.log('Bot error:', err);
+    sendDiscordAlert(`An error occurred: ${err.message || err}`);
   });
 
   bot.on('kicked', reason => {
     console.log('Bot was kicked:', reason);
+    sendDiscordAlert(`The bot was kicked from DonutSMP! Reason: ${reason}`);
   });
 }
 
