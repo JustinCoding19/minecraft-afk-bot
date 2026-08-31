@@ -53,7 +53,8 @@ function createBot() {
     port: 25565, 
     username: 'justintayjunxi19@outlook.com', 
     auth: 'microsoft', 
-    version: false // ✅ Fixes packet overflow crash by auto-detecting server version
+    version: false, // ✅ Fixes packet overflow crash by auto-detecting server version
+    checkTimeoutInterval: 60 * 1000 // 🛡️ Fixes Timeout Loop: Increases keep-alive threshold to 60 seconds so proxy jumps don't disconnect
   });
 
   bot.on('message', (message) => {
@@ -130,7 +131,7 @@ function createBot() {
         bot.chat('AFK bot online!');
         sendDiscordAlert("⚠️ **DonutSMP Alert:** Bot successfully connected and transferred to the survival world node!");
         randomMovement();
-      }, 2000); // Wait 2 seconds for the server swap to complete before cycling movements
+      }, 3500); // Increased to 3.5 seconds to give server proxy more headroom to hand over data
     }, 1500);
   });
 
@@ -147,7 +148,9 @@ function createBot() {
 
   bot.on('kicked', reason => {
     console.log('Bot was kicked:', reason);
-    sendDiscordAlert(`⚠️ **DonutSMP Alert:** The bot was kicked from DonutSMP! Reason: ${reason}`);
+    // 🛠️ Fixes [object Object] rendering by evaluating JSON elements cleanly
+    const kickText = typeof reason === 'object' ? JSON.stringify(reason) : reason;
+    sendDiscordAlert(`⚠️ **DonutSMP Alert:** The bot was kicked from DonutSMP! Reason: \`${kickText.slice(0, 100)}\``);
   });
 }
 
