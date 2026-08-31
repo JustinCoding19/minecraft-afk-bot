@@ -4,10 +4,10 @@ let bot;
 
 function createBot() {
   bot = mineflayer.createBot({
-    host: "donutsmp.net"
-',
-    port: 25565, // ✅ Replace with actual port number
-    username: 'aurora_assistant',
+    host: "donutsmp.net",
+    port: 25565, 
+    username: 'justintayjunxi19@outlook.com', 
+    auth: 'microsoft', 
     version: '1.21.4'
   });
 
