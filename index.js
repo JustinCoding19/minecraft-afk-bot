@@ -1,10 +1,10 @@
 const mineflayer = require('mineflayer');
 const { Client, GatewayIntentBits } = require('discord.js');
 
-// 🌐 Configuration Settings
+// 🌐 Configuration Settings (Automatically pulling from Wispbyte Startup variables)
 const DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/1543944197067898943/ATiUVFN3Qq-PN0RQwyHrl_n40d7eIOBoMtxn_EX_Ijgv_rE95ZDHSwmpzoluX2_WbDQV";
-const DISCORD_BOT_TOKEN = "MTU0Mzg3MDU5NzkzMzU2ODA5MQ.G0ohvk.xQmyi7VnIOsJkOFkJYPHZCn7GMDDcllKePCvJ0"; // 🔴 Paste your actual Discord Bot Token here
-const ALLOWED_DISCORD_USER_ID = "1274246931484377185"; // 🔴 Paste your personal Discord User ID here (so only YOU can turn it off)
+const DISCORD_BOT_TOKEN = process.env.DISCORD_BOT_TOKEN; 
+const ALLOWED_DISCORD_USER_ID = process.env.ALLOWED_DISCORD_USER_ID; 
 
 // Initialize Discord Client
 const client = new Client({
@@ -66,8 +66,7 @@ function createBot() {
     version: false,
     checkTimeoutInterval: 120 * 1000,
     brand: 'vanilla',
-    // 🛡️ Forces Microsoft authentication token data to store permanently inside a folder on Wispbyte
-    profilesFolder: './tokens' 
+    profilesFolder: './tokens' // 🛡️ Saves auth token data locally on Wispbyte drive
   });
 
   bot.on('message', (message) => {
@@ -135,20 +134,31 @@ function createBot() {
 
 // 🔐 Discord commands listener
 client.on('messageCreate', async (message) => {
+  // Checks if the user sending the command matches YOUR exact Discord ID
   if (message.author.bot || message.author.id !== ALLOWED_DISCORD_USER_ID) return;
+  
   const msg = message.content.toLowerCase().trim();
   
   if (msg === '!stop' || msg === '!kill') {
     console.log('🛑 Remote shutdown command received from Discord!');
     sendDiscordWebhookAlert("🛑 **DonutSMP Alert:** Remote shutdown command executed via Discord. Turning off entirely.");
+    
     if (bot) bot.quit();
     client.destroy();
-    process.exit(0);
+    process.exit(0); // Safely shuts down the process on Wispbyte
   }
 });
 
-// Boot up
+// Safeguard check before boot
+if (!DISCORD_BOT_TOKEN) {
+  console.error("❌ ERROR: DISCORD_BOT_TOKEN environment variable is missing in Wispbyte settings!");
+  process.exit(1);
+}
+
+// Boot up sequence
 client.login(DISCORD_BOT_TOKEN).then(() => {
   console.log('🤖 Discord remote listener connected successfully.');
   createBot();
+}).catch(err => {
+  console.error("❌ Failed to log into Discord Bot! Details:", err.message);
 });
