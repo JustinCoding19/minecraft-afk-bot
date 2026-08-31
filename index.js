@@ -1,23 +1,11 @@
-require('dotenv').config(); // 🛠️ Explicitly loads the keys from your local .env file
 const mineflayer = require('mineflayer');
-const { Client, GatewayIntentBits } = require('discord.js');
 
-// 🌐 Configuration Settings (Explicitly pulling from your saved .env file)
+// 🌐 Your active Discord Webhook URL embedded safely below
 const DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/1543944197067898943/ATiUVFN3Qq-PN0RQwyHrl_n40d7eIOBoMtxn_EX_Ijgv_rE95ZDHSwmpzoluX2_WbDQV";
-const DISCORD_BOT_TOKEN = process.env.DISCORD_BOT_TOKEN; 
-const ALLOWED_DISCORD_USER_ID = process.env.ALLOWED_DISCORD_USER_ID; 
 
-// Initialize Discord Client
-const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent
-  ]
-});
-
-function sendDiscordWebhookAlert(message) {
+function sendDiscordAlert(message) {
   const data = JSON.stringify({ content: message });
+
   const url = new URL(DISCORD_WEBHOOK_URL);
   const options = {
     hostname: url.hostname,
@@ -28,6 +16,7 @@ function sendDiscordWebhookAlert(message) {
       'Content-Length': Buffer.byteLength(data)
     }
   };
+
   const req = require('https').request(options);
   req.on('error', (e) => console.error('Webhook error:', e));
   req.write(data);
@@ -35,28 +24,29 @@ function sendDiscordWebhookAlert(message) {
 }
 
 let bot;
-let startTime = Date.now();
-let isTransferring = false;
-let movementTimeout = null;
+let startTime = Date.now(); // ⏱ Tracks the exact millisecond the bot script turned on
+let isTransferring = false; // 🛡️ Tracks if the bot is intentionally shifting server nodes
+let movementTimeout = null; // Holds movement timeout to clear properly on disconnect
 
 function getFormattedSessionTime() {
   const diff = Date.now() - startTime;
   const hours = Math.floor(diff / (1000 * 60 * 60));
   const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+  
   if (hours === 0) return `${minutes} minute(s)`;
   return `${hours} hour(s) and ${minutes} minute(s)`;
 }
 
-// ⏰ Hourly Status Update Loop
+// ⏰ Automatically triggers every 1 hour (3600000 milliseconds)
 setInterval(() => {
   if (bot && bot.username) {
     const sessionTime = getFormattedSessionTime();
-    sendDiscordWebhookAlert(`⏱️ **Hourly Status Update:**\n• **Current Session Uptime:** ${sessionTime}\n\n*The bot is still online and actively tracking shards on DonutSMP!*`);
+    sendDiscordAlert(`⏱️ **Hourly Status Update:**\n• **Current Session Uptime:** ${sessionTime}\n\n*The bot is still online and actively tracking shards on DonutSMP!*`);
   }
 }, 3600000);
 
 function createBot() {
-  isTransferring = false;
+  isTransferring = false; // Reset transfer tracking on initial connect
   if (movementTimeout) clearTimeout(movementTimeout);
 
   bot = mineflayer.createBot({
@@ -64,14 +54,16 @@ function createBot() {
     port: 25565, 
     username: 'justintayjunxi19@outlook.com', 
     auth: 'microsoft', 
-    version: false,
-    checkTimeoutInterval: 120 * 1000,
-    brand: 'vanilla',
-    profilesFolder: './tokens' 
+    version: false, // ✅ Auto-detects server version
+    checkTimeoutInterval: 120 * 1000, // 🛡️ Bypasses high traffic lag drops
+    brand: 'vanilla', // 🎭 Simulates a vanilla client to pass firewalls
+    profilesFolder: './tokens' // 🛡️ Saves authentication token data locally on Wispbyte
   });
 
   bot.on('message', (message) => {
     const msg = message.toString().toLowerCase();
+
+    // 🔐 Handle internal server authentication commands quietly
     if (msg.includes('/register')) {
       bot.chat('/register Bot@12345 Bot@12345');
     } else if (msg.includes('/login')) {
@@ -82,7 +74,8 @@ function createBot() {
   function randomMovement() {
     if (!bot || !bot.entity) return;
     const directions = ['forward', 'back', 'left', 'right'];
-    const dir = directions[ directions.length * Math.random() | 0 ];
+    const dir = directions[directions.length * Math.random() | 0];
+
     bot.setControlState(dir, true);
     movementTimeout = setTimeout(() => {
       if (bot && bot.entity) bot.setControlState(dir, false);
@@ -90,75 +83,61 @@ function createBot() {
     }, 3000);
   }
 
+  // 🚀 Forces transition out of proxy entry lobby instantly
   bot.once('spawn', () => {
     setTimeout(() => {
       if (!bot) return;
-      console.log('Bot logged in and spawned! Moving past entry proxy node...');
+      console.log('Bot logged in! Moving past entry proxy node...');
+      
+      // Tell our script to expect a connection drop during the switch phase
       isTransferring = true; 
       bot.chat('/play survival'); 
       
       setTimeout(() => {
         if (bot && bot.entity) {
           bot.chat('AFK bot online!');
-          sendDiscordWebhookAlert("⚠️ **DonutSMP Alert:** Bot successfully connected and transferred to the survival world node!");
+          sendDiscordAlert("⚠️ **DonutSMP Alert:** Bot successfully connected and transferred to the survival world node!");
           randomMovement();
         }
-      }, 5000);
+      }, 5000); 
     }, 5000);
   });
 
   bot.on('end', () => {
     if (movementTimeout) clearTimeout(movementTimeout);
     console.log('Bot disconnected from socket.');
+    
+    // If it's a proxy transfer drop, suppress the alerting spam since it's normal behavior
     if (isTransferring) {
       console.log('Normal proxy transition link switch detected. Quietly reconnecting...');
       setTimeout(createBot, 3000); 
     } else {
-      sendDiscordWebhookAlert("⚠️ **DonutSMP Alert:** Bot disconnected from DonutSMP. Attempting to reconnect in 5 seconds...");
+      sendDiscordAlert("⚠️ **DonutSMP Alert:** Bot disconnected from DonutSMP. Attempting to reconnect in 5 seconds...");
       setTimeout(createBot, 5000);
     }
   });
 
   bot.on('error', err => {
     console.log('Bot error encountered:', err.message || err);
-    if (isTransferring && (err.message.includes('ECONNRESET') || err.code === 'ECONNRESET')) return;
-    sendDiscordWebhookAlert(`⚠️ **DonutSMP Alert:** An error occurred: ${err.message || err}`);
+    // Ignore alerting ECONNRESET if we just initiated a `/play survival` node transfer
+    if (isTransferring && (err.message.includes('ECONNRESET') || err.code === 'ECONNRESET')) {
+      console.log('Caught expected ECONNRESET during proxy handover.');
+      return;
+    }
+    sendDiscordAlert(`⚠️ **DonutSMP Alert:** An error occurred: ${err.message || err}`);
   });
 
   bot.on('kicked', reason => {
     console.log('Bot was kicked:', reason);
-    if (isTransferring) return;
     const kickText = typeof reason === 'object' ? JSON.stringify(reason) : reason;
-    sendDiscordWebhookAlert(`⚠️ **DonutSMP Alert:** The bot was kicked from DonutSMP! Reason: \`${kickText.slice(0, 100)}\``);
+    
+    // If anti-cheat flags the proxy switch jump as a kick, intercept it to auto-reconnect silently
+    if (isTransferring) {
+      console.log('Handled proxy kick exception during survival routing.');
+      return;
+    }
+    sendDiscordAlert(`⚠️ **DonutSMP Alert:** The bot was kicked from DonutSMP! Reason: \`${kickText.slice(0, 100)}\``);
   });
 }
 
-// 🔐 Discord commands listener
-client.on('messageCreate', async (message) => {
-  if (message.author.bot || message.author.id !== ALLOWED_DISCORD_USER_ID) return;
-  const msg = message.content.toLowerCase().trim();
-  
-  if (msg === '!stop' || msg === '!kill') {
-    console.log('🛑 Remote shutdown command received from Discord!');
-    sendDiscordWebhookAlert("🛑 **DonutSMP Alert:** Remote shutdown command executed via Discord. Turning off entirely.");
-    
-    if (bot) bot.quit();
-    client.destroy();
-    process.exit(0); 
-  }
-});
-
-// 🔍 Double check configuration values before booting up
-if (!DISCORD_BOT_TOKEN || DISCORD_BOT_TOKEN.includes('YOUR_DISCORD_BOT_TOKEN')) {
-  console.error("❌ ERROR: DISCORD_BOT_TOKEN is blank or unreadable inside your .env file!");
-  console.error("Current value parsed:", DISCORD_BOT_TOKEN);
-  process.exit(1);
-}
-
-// Boot up sequence
-client.login(DISCORD_BOT_TOKEN).then(() => {
-  console.log('🤖 Discord remote listener connected successfully.');
-  createBot();
-}).catch(err => {
-  console.error("❌ Failed to log into Discord Bot! Details:", err.message);
-});
+createBot();
