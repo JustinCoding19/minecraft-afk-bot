@@ -1,14 +1,14 @@
 const http = require('http');
-// ✅ Fixes Port Binding Loops by creating a basic web listener
+// ✅ Fixes Port Binding Loops by creating a basic web listener for the cloud environment
 http.createServer((req, res) => res.end('Minecraft AFK Bot is Online')).listen(process.env.PORT || 10000);
 
 const mineflayer = require('mineflayer');
 
-// 🌐 Your active Discord Webhook URL is embedded below
+// 🌐 Your active Discord Webhook URL embedded safely below
 const DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/1543944197067898943/ATiUVFN3Qq-PN0RQwyHrl_n40d7eIOBoMtxn_EX_Ijgv_rE95ZDHSwmpzoluX2_WbDQV";
 
 function sendDiscordAlert(message) {
-  const data = JSON.stringify({ content: `⚠️ **DonutSMP Alert:** ${message}` });
+  const data = JSON.stringify({ content: message });
 
   const url = new URL(DISCORD_WEBHOOK_URL);
   const options = {
@@ -39,31 +39,11 @@ function getFormattedSessionTime() {
   return `${hours} hour(s) and ${minutes} minute(s)`;
 }
 
-function getAccountLifetimePlaytime() {
-  if (!bot || !bot.entity) return "Loading...";
-  
-  try {
-    // Reads engine-level statistics directly from the server core (tracked in game ticks)
-    const totalTicks = bot.getStatistic('play_time') || bot.getStatistic('time_since_death') || 0;
-    
-    // Converts game ticks into real-world hours and minutes (20 ticks = 1 second)
-    const totalSeconds = totalTicks / 20;
-    const hours = Math.floor(totalSeconds / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    
-    return `${hours} hour(s) and ${minutes} minute(s)`;
-  } catch (err) {
-    return "Synchronizing statistics...";
-  }
-}
-
 // ⏰ Automatically triggers every 1 hour (3600000 milliseconds)
 setInterval(() => {
   if (bot && bot.username) {
     const sessionTime = getFormattedSessionTime();
-    const lifetimeTime = getAccountLifetimePlaytime();
-    
-    sendDiscordAlert(`⏱️ **Hourly Status Update:**\n• **Current Session Uptime:** ${sessionTime}\n• **Total Account Playtime:** ${lifetimeTime}\n\n*The bot is still online and tracking shards on DonutSMP!*`);
+    sendDiscordAlert(`⏱️ **Hourly Status Update:**\n• **Current Session Uptime:** ${sessionTime}\n\n*The bot is still online and actively tracking shards on DonutSMP!*`);
   }
 }, 3600000);
 
@@ -148,7 +128,7 @@ function createBot() {
       
       setTimeout(() => {
         bot.chat('AFK bot online!');
-        sendDiscordAlert("Bot successfully connected and transferred to the survival world node!");
+        sendDiscordAlert("⚠️ **DonutSMP Alert:** Bot successfully connected and transferred to the survival world node!");
         randomMovement();
       }, 2000); // Wait 2 seconds for the server swap to complete before cycling movements
     }, 1500);
@@ -156,18 +136,18 @@ function createBot() {
 
   bot.on('end', () => {
     console.log('Bot disconnected. Reconnecting in 5 seconds...');
-    sendDiscordAlert("Bot disconnected from DonutSMP. Attempting to reconnect in 5 seconds...");
+    sendDiscordAlert("⚠️ **DonutSMP Alert:** Bot disconnected from DonutSMP. Attempting to reconnect in 5 seconds...");
     setTimeout(createBot, 5000);
   });
 
   bot.on('error', err => {
     console.log('Bot error:', err);
-    sendDiscordAlert(`An error occurred: ${err.message || err}`);
+    sendDiscordAlert(`⚠️ **DonutSMP Alert:** An error occurred: ${err.message || err}`);
   });
 
   bot.on('kicked', reason => {
     console.log('Bot was kicked:', reason);
-    sendDiscordAlert(`The bot was kicked from DonutSMP! Reason: ${reason}`);
+    sendDiscordAlert(`⚠️ **DonutSMP Alert:** The bot was kicked from DonutSMP! Reason: ${reason}`);
   });
 }
 
