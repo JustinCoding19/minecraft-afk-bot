@@ -1,7 +1,8 @@
+require('dotenv').config(); // 🛠️ Explicitly loads the keys from your local .env file
 const mineflayer = require('mineflayer');
 const { Client, GatewayIntentBits } = require('discord.js');
 
-// 🌐 Configuration Settings (Automatically pulling from Wispbyte Startup variables)
+// 🌐 Configuration Settings (Explicitly pulling from your saved .env file)
 const DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/1543944197067898943/ATiUVFN3Qq-PN0RQwyHrl_n40d7eIOBoMtxn_EX_Ijgv_rE95ZDHSwmpzoluX2_WbDQV";
 const DISCORD_BOT_TOKEN = process.env.DISCORD_BOT_TOKEN; 
 const ALLOWED_DISCORD_USER_ID = process.env.ALLOWED_DISCORD_USER_ID; 
@@ -66,7 +67,7 @@ function createBot() {
     version: false,
     checkTimeoutInterval: 120 * 1000,
     brand: 'vanilla',
-    profilesFolder: './tokens' // 🛡️ Saves auth token data locally on Wispbyte drive
+    profilesFolder: './tokens' 
   });
 
   bot.on('message', (message) => {
@@ -81,7 +82,7 @@ function createBot() {
   function randomMovement() {
     if (!bot || !bot.entity) return;
     const directions = ['forward', 'back', 'left', 'right'];
-    const dir = directions[Math.floor(Math.random() * directions.length)];
+    const dir = directions[ directions.length * Math.random() | 0 ];
     bot.setControlState(dir, true);
     movementTimeout = setTimeout(() => {
       if (bot && bot.entity) bot.setControlState(dir, false);
@@ -134,9 +135,7 @@ function createBot() {
 
 // 🔐 Discord commands listener
 client.on('messageCreate', async (message) => {
-  // Checks if the user sending the command matches YOUR exact Discord ID
   if (message.author.bot || message.author.id !== ALLOWED_DISCORD_USER_ID) return;
-  
   const msg = message.content.toLowerCase().trim();
   
   if (msg === '!stop' || msg === '!kill') {
@@ -145,13 +144,14 @@ client.on('messageCreate', async (message) => {
     
     if (bot) bot.quit();
     client.destroy();
-    process.exit(0); // Safely shuts down the process on Wispbyte
+    process.exit(0); 
   }
 });
 
-// Safeguard check before boot
-if (!DISCORD_BOT_TOKEN) {
-  console.error("❌ ERROR: DISCORD_BOT_TOKEN environment variable is missing in Wispbyte settings!");
+// 🔍 Double check configuration values before booting up
+if (!DISCORD_BOT_TOKEN || DISCORD_BOT_TOKEN.includes('YOUR_DISCORD_BOT_TOKEN')) {
+  console.error("❌ ERROR: DISCORD_BOT_TOKEN is blank or unreadable inside your .env file!");
+  console.error("Current value parsed:", DISCORD_BOT_TOKEN);
   process.exit(1);
 }
 
