@@ -1,3 +1,7 @@
+const http = require('http');
+// ✅ Fixes Render's port binding loop by creating a basic web listener
+http.createServer((req, res) => res.end('Minecraft AFK Bot is Online')).listen(process.env.PORT || 10000);
+
 const mineflayer = require('mineflayer');
 
 let bot;
@@ -8,7 +12,7 @@ function createBot() {
     port: 25565, 
     username: 'justintayjunxi19@outlook.com', 
     auth: 'microsoft', 
-    version: '1.21.4'
+    version: false // ✅ Fixes packet overflow crash by auto-detecting the server version
   });
 
   bot.on('message', (message) => {
