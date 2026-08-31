@@ -1,7 +1,3 @@
-const http = require('http');
-// ✅ Fixes Port Binding Loops by creating a basic web listener for the cloud environment
-http.createServer((req, res) => res.end('Minecraft AFK Bot is Online')).listen(process.env.PORT || 10000);
-
 const mineflayer = require('mineflayer');
 
 // 🌐 Your active Discord Webhook URL embedded safely below
@@ -29,6 +25,8 @@ function sendDiscordAlert(message) {
 
 let bot;
 let startTime = Date.now(); // ⏱ Tracks the exact millisecond the bot script turned on
+let isTransferring = false; // 🛡️ Tracks if the bot is intentionally shifting server nodes
+let movementTimeout = null; // Holds movement timeout to clear properly on disconnect
 
 function getFormattedSessionTime() {
   const diff = Date.now() - startTime;
@@ -48,108 +46,97 @@ setInterval(() => {
 }, 3600000);
 
 function createBot() {
+  isTransferring = false; // Reset transfer tracking on initial connect
+  if (movementTimeout) clearTimeout(movementTimeout);
+
   bot = mineflayer.createBot({
     host: "donutsmp.net",
     port: 25565, 
     username: 'justintayjunxi19@outlook.com', 
     auth: 'microsoft', 
-    version: false, // ✅ Fixes packet overflow crash by auto-detecting server version
-    checkTimeoutInterval: 60 * 1000 // 🛡️ Fixes Timeout Loop: Increases keep-alive threshold to 60 seconds so proxy jumps don't disconnect
+    version: false, // ✅ Auto-detects server version
+    checkTimeoutInterval: 90 * 1000, // 🛡️ Increased to 90 seconds to handle heavy network proxy delay peaks
+    brand: 'vanilla' // 🎭 Simulates a vanilla client brand packet to bypass proxy firewall filters
   });
 
   bot.on('message', (message) => {
     const msg = message.toString().toLowerCase();
 
+    // 🔐 Handle internal server authentication commands quietly
     if (msg.includes('/register')) {
       bot.chat('/register Bot@12345 Bot@12345');
     } else if (msg.includes('/login')) {
       bot.chat('/login Bot@12345');
     }
-
-    if (
-      msg.includes('teleport to you') ||
-      msg.includes('teleport to them')
-    ) {
-      console.log('Teleport request detected! Accepting...');
-      bot.chat('/tpaccept');
-    }
   });
 
-  bot.on('chat', (username, message) => {
-    if (username === bot.username) return;
-    const lower = message.toLowerCase();
-
-    if (lower.startsWith('!')) {
-      const args = lower.slice(1).split(' ');
-      const command = args.shift();
-
-      switch (command) {
-        case 'help':
-          bot.chat(`Hi ${username}, I respond to hello, how are you, and commands like !help, !ping.`);
-          break;
-        case 'sunilgaming':
-          bot.chat(`Hey ${username}, sunilgaming created me!`);
-          break;
-        case 'ping':
-          bot.chat(`Pong, ${username}!`);
-          break;
-        default:
-          bot.chat(`Unknown command: ${command}`);
-      }
-    } else {
-      if (lower.includes('hello')) bot.chat(`Hi ${username}!`);
-      else if (lower.includes('how are you')) bot.chat(`I'm just a bot, but thanks for asking!`);
-    }
-  });
-
-  bot.on('whisper', (username, message) => {
-    if (username === bot.username) return;
-    console.log(`[Whisper] <${username}>: ${message}`);
-    bot.whisper(username, `Hello ${username}, I got your message!`);
-  });
+  // 🤫 Chat commands and whisper listeners removed completely to maintain low-profile AFK stealth.
 
   function randomMovement() {
+    if (!bot || !bot.entity) return;
     const directions = ['forward', 'back', 'left', 'right'];
     const dir = directions[Math.floor(Math.random() * directions.length)];
 
     bot.setControlState(dir, true);
-    setTimeout(() => {
-      bot.setControlState(dir, false);
-      setTimeout(randomMovement, 2000);
+    movementTimeout = setTimeout(() => {
+      if (bot && bot.entity) bot.setControlState(dir, false);
+      movementTimeout = setTimeout(randomMovement, 2000);
     }, 3000);
   }
 
-  // 🚀 Forces transition out of proxy entry lobby instantly to stop 30-second timeout drop errors
+  // 🚀 Forces transition out of proxy entry lobby instantly
   bot.once('spawn', () => {
     setTimeout(() => {
+      if (!bot) return;
       console.log('Bot logged in! Moving past entry proxy node...');
       
-      // Types command to jump from the entry proxy to the active survival server
+      // Tell our script to expect a connection drop during the switch phase
+      isTransferring = true; 
       bot.chat('/play survival'); 
       
       setTimeout(() => {
-        bot.chat('AFK bot online!');
-        sendDiscordAlert("⚠️ **DonutSMP Alert:** Bot successfully connected and transferred to the survival world node!");
-        randomMovement();
-      }, 3500); // Increased to 3.5 seconds to give server proxy more headroom to hand over data
-    }, 1500);
+        if (bot && bot.entity) {
+          bot.chat('AFK bot online!');
+          sendDiscordAlert("⚠️ **DonutSMP Alert:** Bot successfully connected and transferred to the survival world node!");
+          randomMovement();
+        }
+      }, 4000); // 4 seconds allows the network proxy buffer enough headroom to switch
+    }, 2000);
   });
 
   bot.on('end', () => {
-    console.log('Bot disconnected. Reconnecting in 5 seconds...');
-    sendDiscordAlert("⚠️ **DonutSMP Alert:** Bot disconnected from DonutSMP. Attempting to reconnect in 5 seconds...");
-    setTimeout(createBot, 5000);
+    if (movementTimeout) clearTimeout(movementTimeout);
+    console.log('Bot disconnected from socket.');
+    
+    // If it's a proxy transfer drop, suppress the alerting spam since it's normal behavior
+    if (isTransferring) {
+      console.log('Normal proxy transition link switch detected. Quietly reconnecting...');
+      setTimeout(createBot, 2500); 
+    } else {
+      sendDiscordAlert("⚠️ **DonutSMP Alert:** Bot disconnected from DonutSMP. Attempting to reconnect in 5 seconds...");
+      setTimeout(createBot, 5000);
+    }
   });
 
   bot.on('error', err => {
-    console.log('Bot error:', err);
+    console.log('Bot error encountered:', err.message || err);
+    // Ignore alerting ECONNRESET if we just initiated a `/play survival` node transfer
+    if (isTransferring && (err.message.includes('ECONNRESET') || err.code === 'ECONNRESET')) {
+      console.log('Caught expected ECONNRESET during proxy handover.');
+      return;
+    }
     sendDiscordAlert(`⚠️ **DonutSMP Alert:** An error occurred: ${err.message || err}`);
   });
 
   bot.on('kicked', reason => {
     console.log('Bot was kicked:', reason);
-    // 🛠️ Fixes [object Object] rendering by evaluating JSON elements cleanly
     const kickText = typeof reason === 'object' ? JSON.stringify(reason) : reason;
+    
+    // If anti-cheat flags the proxy switch jump as a kick, intercept it to auto-reconnect silently
+    if (isTransferring) {
+      console.log('Handled proxy kick exception during survival routing.');
+      return;
+    }
     sendDiscordAlert(`⚠️ **DonutSMP Alert:** The bot was kicked from DonutSMP! Reason: \`${kickText.slice(0, 100)}\``);
   });
 }
