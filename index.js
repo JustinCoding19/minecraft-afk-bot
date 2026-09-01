@@ -5,7 +5,7 @@ const express = require('express');
 const app = express();
 
 // 🌐 Discord Webhook Settings
-// Remember to change this placeholder to your actual channel webhook URL!
+// Paste your real channel webhook URL inside the quotes below if you want alerts!
 const WEBHOOK_URL = 'https://discord.com/api/webhooks/1543944197067898943/ATiUVFN3Qq-PN0RQwyHrl_n40d7eIOBoMtxn_EX_Ijgv_rE95ZDHSwmpzoluX2_WbDQV'; 
 
 function sendDiscordWebhook(message) {
@@ -14,8 +14,8 @@ function sendDiscordWebhook(message) {
     .catch(err => console.error('Failed to send Discord webhook:', err.message));
 }
 
-// Uptime Web Server (Required to keep Wispbyte free-tier slots online)
-app.get('/', (req, res) => res.send('Aurora Assistant 24/7 Self-Healing Core Engine Active!'));
+// Uptime Web Server (Bound to your unique Wispbyte public allocation port)
+app.get('/', (req, res) => res.send('Aurora Assistant 24/7 Ultra-Stable Core Active!'));
 app.listen(10255, () => console.log('Uptime network socket bound to port 10255'));
 
 let bot;
@@ -24,7 +24,7 @@ let afkInterval = null;
 function createBot() {
   console.log('Connecting to DonutSMP via authenticated proxy tunnel...');
   
-  // FIXED: Your complete proxy from your list is now fully restored here!
+  // Handshake proxy configuration profile
   const proxyAgent = new ProxyAgent('http://31.59.20');
 
   bot = mineflayer.createBot({
@@ -33,10 +33,15 @@ function createBot() {
     username: 'justintayjunxi19@outlook.com',
     auth: 'microsoft',
     version: false,
-    // Fixes the "client timed out after 60000ms" protocol drop
     checkTimeoutInterval: 90 * 1000, 
     connectionTimeout: 90000,
     agent: proxyAgent 
+  });
+
+  // Automatically accept DonutSMP's resource pack so it stops dropping the connection socket
+  bot.on('resourcePack', (url, hash) => {
+    console.log('Accepting server resource pack...');
+    bot.acceptResourcePack();
   });
 
   bot.on('login', () => {
@@ -46,12 +51,18 @@ function createBot() {
   });
 
   bot.on('spawn', () => {
-    console.log('Bot spawned into the world grid. Activating Anti-AFK Movement Matrix...');
+    console.log('Bot spawned in lobby. Initiating server entry sequence...');
     
-    // Clear any dangling interval loops if they exist
-    if (afkInterval) clearInterval(afkInterval);
+    // Auto-Bypass: Drops straight past the lobby after 5 seconds to clear lobby queue bugs
+    setTimeout(() => {
+      if (bot && bot.entity) {
+        console.log('Executing entry route command...');
+        bot.chat('/server survival'); // Changes directory out of the buggy layout lobby loop
+      }
+    }, 5000);
 
-    // Advanced Matrix Loop: Executes alternating actions every 12 seconds
+    // Advanced Matrix Loop: Executes alternating movements every 12 seconds to cheat anti-AFK radars
+    if (afkInterval) clearInterval(afkInterval);
     afkInterval = setInterval(() => {
       if (!bot || !bot.entity) return;
 
@@ -59,27 +70,22 @@ function createBot() {
       const randomYaw = Math.random() * Math.PI * 2;
       const randomPitch = (Math.random() - 0.5) * 0.5;
 
-      // Unstuck routine: look around randomly to push fresh telemetry to server anti-cheat
       bot.look(randomYaw, randomPitch);
 
       switch(actionDice) {
         case 0:
-          // Toggle Sneaking
           bot.setControlState('sneak', true);
           setTimeout(() => bot.setControlState('sneak', false), 800);
           break;
         case 1:
-          // Perform a quick jump
           bot.setControlState('jump', true);
           setTimeout(() => bot.setControlState('jump', false), 500);
           break;
         case 2:
-          // Take a tiny step forward
           bot.setControlState('forward', true);
           setTimeout(() => bot.setControlState('forward', false), 400);
           break;
         case 3:
-          // Take a tiny step backward
           bot.setControlState('back', true);
           setTimeout(() => bot.setControlState('back', false), 400);
           break;
@@ -87,18 +93,9 @@ function createBot() {
     }, 12000);
   });
 
-  // TPA Auto-Accept Utility
   bot.on('tpRequest', (username) => {
-    console.log(`Auto-accepting incoming teleport allocation from: ${username}`);
+    console.log(`Auto-accepting teleport allocation from: ${username}`);
     bot.chat(`/tpaccept ${username}`);
-  });
-
-  // Basic Commands Engine
-  bot.on('chat', (username, message) => {
-    if (username === bot.username) return;
-    const cmd = message.toLowerCase();
-    if (cmd === '!help') bot.chat('Aurora Bot Core is operating fully automated.');
-    if (cmd === '!ping') bot.chat(`Pong! Bot connection is routing normally.`);
   });
 
   bot.on('error', (err) => {
@@ -108,12 +105,10 @@ function createBot() {
   });
 
   bot.on('end', (reason) => {
-    // CRITICAL: Force a 4-minute safety cooldown. 
-    // This gives Microsoft plenty of time to fully drop your ghost connections
-    // and completely prevents the "does the account own minecraft?" corrupted profile error!
-    const delayTime = 240000; 
+    // 2-minute safety delay balances fast logging with token protection
+    const delayTime = 120000; 
     
-    const endMsg = `🔴 DonutSMP Connection Severed (${reason}). Safety Token Cooldown engaged. Reconnecting cleanly in 4 minutes...`;
+    const endMsg = `🔴 DonutSMP Connection Severed (${reason}). Reconnecting in 2 minutes...`;
     console.warn(endMsg);
     sendDiscordWebhook(endMsg);
 
