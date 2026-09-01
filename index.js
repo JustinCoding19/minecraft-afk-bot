@@ -16,7 +16,7 @@ function sendDiscordWebhook(message) {
 
 // Uptime Web Server (Required to keep Wispbyte free-tier slots online)
 app.get('/', (req, res) => res.send('Aurora Assistant 24/7 Self-Healing Core Engine Active!'));
-app.listen(3000, () => console.log('Uptime network socket bound to port 3000'));
+app.listen(10255, () => console.log('Uptime network socket bound to port 10255'));
 
 let bot;
 let afkInterval = null;
