@@ -5,7 +5,6 @@ const express = require('express');
 const app = express();
 
 // 🌐 Discord Webhook Settings
-// Paste your real channel webhook URL inside the quotes below if you want alerts!
 const WEBHOOK_URL = 'https://discord.com/api/webhooks/1543944197067898943/ATiUVFN3Qq-PN0RQwyHrl_n40d7eIOBoMtxn_EX_Ijgv_rE95ZDHSwmpzoluX2_WbDQV'; 
 
 function sendDiscordWebhook(message) {
@@ -14,18 +13,35 @@ function sendDiscordWebhook(message) {
     .catch(err => console.error('Failed to send Discord webhook:', err.message));
 }
 
-// Uptime Web Server (Bound to your unique Wispbyte public allocation port)
-app.get('/', (req, res) => res.send('Aurora Assistant 24/7 Ultra-Stable Core Active!'));
+// Uptime Web Server (Bound to your unique Wispbyte public port)
+app.get('/', (req, res) => res.send('Aurora Assistant Multi-Proxy Rotator Core Active!'));
 app.listen(10255, () => console.log('Uptime network socket bound to port 10255'));
 
+// 🔑 YOUR PRIVATE PROXY LIST
+// The bot will cycle through these automatically if it gets kicked or blocked!
+const proxyList = [
+  'http://31.59.20',
+  'http://31.59.20',
+  'http://185.162.229',
+  'http://185.162.229',
+  'http://185.162.228',
+  'http://45.153.22',
+  'http://45.153.23',
+  'http://45.137.23',
+  'http://45.137.22'
+];
+
+let currentProxyIndex = 0;
 let bot;
 let afkInterval = null;
 
 function createBot() {
-  console.log('Connecting to DonutSMP via authenticated proxy tunnel...');
+  const currentProxy = proxyList[currentProxyIndex];
+  console.log(`\n==================================================`);
+  console.log(`🚀 [Proxy #${currentProxyIndex + 1}/${proxyList.length}] Trying IP: ${currentProxy.split('@')[1]}`);
+  console.log(`==================================================`);
   
-  // Handshake proxy configuration profile
-  const proxyAgent = new ProxyAgent('http://31.59.20');
+  const proxyAgent = new ProxyAgent(currentProxy);
 
   bot = mineflayer.createBot({
     host: "donutsmp.net",
@@ -33,35 +49,34 @@ function createBot() {
     username: 'justintayjunxi19@outlook.com',
     auth: 'microsoft',
     version: false,
-    checkTimeoutInterval: 90 * 1000, 
-    connectionTimeout: 90000,
+    checkTimeoutInterval: 45 * 1000, // Faster timeout check to cycle dead proxies quickly
+    connectionTimeout: 45000,
     agent: proxyAgent 
   });
 
-  // Automatically accept DonutSMP's resource pack so it stops dropping the connection socket
   bot.on('resourcePack', (url, hash) => {
     console.log('Accepting server resource pack...');
     bot.acceptResourcePack();
   });
 
   bot.on('login', () => {
-    const logMsg = `🟢 DonutSMP Alert: Bot successfully authenticated as ${bot.username}!`;
+    const logMsg = `🟢 DonutSMP Core: Bot authenticated via Proxy #${currentProxyIndex + 1}! Name: ${bot.username}`;
     console.log(logMsg);
     sendDiscordWebhook(logMsg);
   });
 
   bot.on('spawn', () => {
-    console.log('Bot spawned in lobby. Initiating server entry sequence...');
+    console.log('🎉 Bot successfully spawned inside the grid! Disabling proxy rotation loops.');
     
-    // Auto-Bypass: Drops straight past the lobby after 5 seconds to clear lobby queue bugs
+    // Auto-Bypass Lobby Queue
     setTimeout(() => {
       if (bot && bot.entity) {
         console.log('Executing entry route command...');
-        bot.chat('/server survival'); // Changes directory out of the buggy layout lobby loop
+        bot.chat('/server survival'); 
       }
     }, 5000);
 
-    // Advanced Matrix Loop: Executes alternating movements every 12 seconds to cheat anti-AFK radars
+    // Advanced Matrix Loop: Executes alternating movements every 12 seconds
     if (afkInterval) clearInterval(afkInterval);
     afkInterval = setInterval(() => {
       if (!bot || !bot.entity) return;
@@ -94,30 +109,27 @@ function createBot() {
   });
 
   bot.on('tpRequest', (username) => {
-    console.log(`Auto-accepting teleport allocation from: ${username}`);
     bot.chat(`/tpaccept ${username}`);
   });
 
   bot.on('error', (err) => {
-    const errMsg = `⚠️ DonutSMP Error Hook: ${err.message}`;
-    console.error(errMsg);
-    sendDiscordWebhook(errMsg);
+    console.error(`❌ Proxy Error [${err.code || 'TIMEOUT'}]: ${err.message}`);
   });
 
   bot.on('end', (reason) => {
-    // 2-minute safety delay balances fast logging with token protection
-    const delayTime = 120000; 
+    console.warn(`🔴 Disconnected from connection route. Reason: ${reason}`);
     
-    const endMsg = `🔴 DonutSMP Connection Severed (${reason}). Reconnecting in 2 minutes...`;
-    console.warn(endMsg);
-    sendDiscordWebhook(endMsg);
-
     if (afkInterval) {
       clearInterval(afkInterval);
       afkInterval = null;
     }
 
-    setTimeout(createBot, delayTime);
+    // Move to the next proxy index in the array list
+    currentProxyIndex = (currentProxyIndex + 1) % proxyList.length;
+    
+    // Paced 10-second swap delay so the server logs don't lock your token
+    console.log(`⚙️ Swapping proxy configs. Moving to Proxy #${currentProxyIndex + 1} in 10 seconds...`);
+    setTimeout(createBot, 10000);
   });
 }
 
